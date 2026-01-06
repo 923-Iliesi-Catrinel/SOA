@@ -1,0 +1,114 @@
+services:
+  # Database: Postgres
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    volumes:
+      # Mounts the script to create both databases
+      - ./init-scripts:/docker-entrypoint-initdb.d
+      # Persist Postgres data
+      - ./pgdata:/var/lib/postgresql/data
+  
+  # Event Streaming: Kafka + Zookeeper
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  # Message Broker: RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # App communication
+      - "15672:15672" # Dashboard (User: guest, Pass: guest)
+
+  # Cache: Redis
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  # Microservice 1: Telemetry (The Sensors)
+  telemetry-service:
+    build: ./packages/telemetry-service
+    container_name: telemetry-service
+    restart: always
+    depends_on:
+      - kafka
+      - postgres
+    environment:
+      - DB_HOST=postgres
+      - DB_NAME=telemetry_db
+      - DB_USER=admin
+      - DB_PASS=password
+      - KAFKA_BROKER=kafka:29092
+      - KAFKAJS_NO_PARTITIONER_WARNING=1
+
+  # Microservice 2: Order Service (The REST API)
+  order-service:
+    build: ./packages/order-service
+    container_name: order-service
+    restart: always
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres
+      - rabbitmq
+    environment:
+      - PORT=3002
+      - DB_HOST=postgres
+      - DB_NAME=order_db
+      - DB_USER=admin
+      - DB_PASS=password
+      - JWT_SECRET=secret_pharmaguard_key
+      - RABBITMQ_HOST=amqp://guest:guest@rabbitmq:5672
+
+  # MicroService 3: Notification Service
+  notification-service:
+    build: ./packages/notification-service
+    container_name: notification-service
+    ports:
+      - "3003:3003"
+    depends_on:
+      - redis
+      - rabbitmq
+      - kafka
+    environment:
+      - PORT=3003
+      - REDIS_HOST=redis
+      - RABBITMQ_HOST=amqp://guest:guest@rabbitmq:5672
+      - KAFKA_BROKER=kafka:29092
+      - KAFKAJS_NO_PARTITIONER_WARNING=1
+
+  # Service 4: Frontend (The Web App)
+  # UNCOMMENT THIS BLOCK AFTER we write the React code
+  # web:
+  #   build: ./packages/web
+  #   container_name: web
+  #   ports:
+  #     - "3000:3000"
+  #   stdin_open: true # Needed for React Docker

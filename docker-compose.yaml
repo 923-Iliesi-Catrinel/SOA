@@ -51,8 +51,37 @@ services:
     container_name: redis
     ports:
       - "6379:6379"
+  
+  # API Gateway - nginx
+  gateway:
+    build: ./packages/nginx
+    container_name: gateway
+    ports:
+      - "8080:80"
+    depends_on:
+      - auth-service
+      - order-service
+      - notification-service
+      - telemetry-service
+  
+  # Microservice 1: Authentication Service
+  auth-service:
+    build: ./packages/auth-service
+    container_name: auth-service
+    restart: always
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+    environment:
+      - PORT=3001
+      - DB_HOST=postgres
+      - DB_NAME=auth_db
+      - DB_USER=admin
+      - DB_PASS=password
+      - JWT_SECRET=secret_pharmaguard_key
 
-  # Microservice 1: Telemetry (The Sensors)
+  # Microservice 2: Telemetry (The Sensors)
   telemetry-service:
     build: ./packages/telemetry-service
     container_name: telemetry-service
@@ -68,7 +97,7 @@ services:
       - KAFKA_BROKER=kafka:29092
       - KAFKAJS_NO_PARTITIONER_WARNING=1
 
-  # Microservice 2: Order Service (The REST API)
+  # Microservice 3: Order Service (The REST API)
   order-service:
     build: ./packages/order-service
     container_name: order-service
@@ -87,7 +116,7 @@ services:
       - JWT_SECRET=secret_pharmaguard_key
       - RABBITMQ_HOST=amqp://guest:guest@rabbitmq:5672
 
-  # MicroService 3: Notification Service
+  # MicroService 4: Notification Service
   notification-service:
     build: ./packages/notification-service
     container_name: notification-service
@@ -97,14 +126,45 @@ services:
       - redis
       - rabbitmq
       - kafka
+      - faas-risk
+      - faas-email
     environment:
       - PORT=3003
       - REDIS_HOST=redis
       - RABBITMQ_HOST=amqp://guest:guest@rabbitmq:5672
       - KAFKA_BROKER=kafka:29092
       - KAFKAJS_NO_PARTITIONER_WARNING=1
+      - RISK_FAAS_URL=http://faas-risk:8080/
+      - EMAIL_FAAS_URL=http://faas-email:8080/
+  
+  # FaaS: Risk Calculator Function
+  faas-risk:
+    build: ./packages/functions/risk-calculator
+    container_name: faas-risk
+    ports:
+      - "5000:8080"
 
-  # Service 4: Frontend (The Web App)
+  # FaaS 2: Email Sender Function
+  faas-email:
+    build: ./packages/functions/email-sender
+    container_name: faas-email
+    ports:
+      - "5001:8080"
+    depends_on:
+      - mailhog
+    environment:
+      - SMTP_SERVER=mailhog
+      - SMTP_PORT=1025
+  
+  # Email Server (Local)
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web UI port
+
+  # Frontend (The Web App)
   # UNCOMMENT THIS BLOCK AFTER we write the React code
   # web:
   #   build: ./packages/web

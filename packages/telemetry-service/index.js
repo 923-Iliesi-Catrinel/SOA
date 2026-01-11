@@ -1,6 +1,13 @@
 const { Sequelize, DataTypes } = require('sequelize');
 const { Kafka } = require('kafkajs');
+const express = require('express');
+const cors = require('cors');
 
+const app = express();
+app.use(express.json());
+app.use(cors());
+
+const PORT = 3004
 const KAFKA_BROKER = process.env.KAFKA_BROKER || 'kafka:9092';
 const DB_URI = `postgres://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}:5432/${process.env.DB_NAME}`;
 
@@ -34,17 +41,17 @@ const trucks = [
 
 async function generateAndSend() {
     for (const truck of trucks) {
-        // Simulate Movement (Jiggle coordinates)
+        // Simulate Movement
         truck.lat += (Math.random() - 0.5) * 0.001;
         truck.lng += (Math.random() - 0.5) * 0.001;
         
         // Simulate Sensors
-        // 95% chance temp is normal, 5% chance it spikes
-        if (Math.random() > 0.95) truck.temp += 1.5; 
+        // 99% chance temp is stable
+        if (Math.random() > 0.99) truck.temp += 1.5; 
         else truck.temp += (Math.random() - 0.5) * 0.1;
 
         // 80% chance smooth ride, 20% chance of SHOCK (Vibration > 4.0)
-        const isShock = Math.random() > 0.80;
+        const isShock = Math.random() > 0.995; 
         const vibration = isShock ? (Math.random() * 5 + 3) : (Math.random() * 0.5);
 
         const payload = {
@@ -68,7 +75,7 @@ async function generateAndSend() {
             TelemetryLog.create(payload).catch(err => console.error('DB Error:', err.message));
 
             if (vibration > 4.0) {
-                console.log(`SHOCK DETECTED: ${truck.id} [${payload.vibration}G]`);
+                console.log(`RANDOM SHOCK DETECTED: ${truck.id} [${payload.vibration}G]`);
             } else {
                 console.log('.');
             }
@@ -78,6 +85,27 @@ async function generateAndSend() {
         }
     }
 }
+
+// Endpoint to manually simulate a crash/shock event
+app.post('/simulate/shock', async (req, res) => {
+    const { truckId } = req.body;
+    
+    const shockData = {
+        truckId: truckId || 'TRUCK-101',
+        temperature: 6.0,
+        vibration: 15.0, // MASSIVE SHOCK
+        location: { lat: 46.77, lng: 23.60 },
+        timestamp: new Date().toISOString()
+    };
+
+    await producer.send({
+        topic: 'telemetry-stream',
+        messages: [{ value: JSON.stringify(shockData) }],
+    });
+
+    console.log(`MANUAL SHOCK CREATED: ${shockData.truckId}`);
+    res.json({ message: 'Crash simulated!', data: shockData });
+});
 
 async function start() {
     try {
@@ -93,7 +121,6 @@ async function start() {
 
     } catch (err) {
         console.error('Startup Failed:', err.message);
-        console.log('Retrying in 5s...');
         setTimeout(start, 5000);
     }
 }

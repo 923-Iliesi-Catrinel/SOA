@@ -1,2 +1,3 @@
 CREATE DATABASE order_db;
 CREATE DATABASE telemetry_db;
+CREATE DATABASE auth_db;

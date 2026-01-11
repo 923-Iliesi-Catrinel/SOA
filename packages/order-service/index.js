@@ -185,7 +185,7 @@ app.put('/orders/:id/deliver', authenticateToken, async (req, res) => {
 });
 
 // Startup
-sequelize.sync().then(async () => {
+sequelize.sync({ alter: true }).then(async () => {
     await setupRabbitMQ();
     app.listen(PORT, () => console.log(`Order Service running on ${PORT}`));
 });

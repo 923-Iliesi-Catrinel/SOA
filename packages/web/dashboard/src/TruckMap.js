@@ -8,8 +8,7 @@ import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
-// 2. Fix for Leaflet's Default Icon issues in Webpack
-// This ensures Leaflet uses the images we just imported
+// Fix for Leaflet's Default Icon issues in Webpack
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: markerIcon2x,
@@ -153,9 +152,8 @@ export default function TruckMap() {
                             color: '#b71c1c',
                             border: '1px solid #ffcdd2'
                         }}>
-                            💰 <strong>Est. Loss: ${alert.riskData.estimatedLoss}</strong>
+                            💰 <strong>Est. Loss: ${alert.riskData.estimated_loss}</strong>
                             <br/>
-                            📊 Risk Score: {alert.riskData.riskScore}/100
                         </div>
                     )}
                 </div>

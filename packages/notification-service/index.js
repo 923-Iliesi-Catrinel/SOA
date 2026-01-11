@@ -96,13 +96,14 @@ async function startKafkaConsumer() {
                             timestamp: data.timestamp
                         }, { timeout: 2000 });
                         
-                        riskData = riskResponse.data;
-                        console.log(`FaaS Audit: Loss est. $${riskData.estimatedLoss}`);
-                        
-                         axios.post(EMAIL_FAAS_URL, {
+                        riskData = riskResponse.data;        
+                        console.log(`FaaS Audit: Loss est. $${riskData.estimated_loss}`);
+                
+                        axios.post(EMAIL_FAAS_URL, {
                             to: 'manager@pharmaguard.com',
+                            truckId: truckId,
                             subject: `CRITICAL ALERT: ${truckId} Crashed`,
-                            body: `Loss: $${riskData.estimatedLoss}. Location: ${data.latitude}, ${data.longitude}`
+                            message: `Loss: $${riskData.estimated_loss}. Location: ${data.latitude}, ${data.longitude}`
                         }).catch(e => console.error("Email failed", e.message));
 
                     } catch (err) {

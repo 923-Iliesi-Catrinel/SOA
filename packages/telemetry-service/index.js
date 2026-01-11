@@ -34,9 +34,17 @@ const kafka = new Kafka({
 const producer = kafka.producer();
 
 const trucks = [
-    { id: 'TRUCK-101', lat: 52.2297, lng: 21.0122, temp: 4.0 }, // Warsaw
-    { id: 'TRUCK-202', lat: 48.8566, lng: 2.3522, temp: -2.0 }, // Paris
-    { id: 'TRUCK-303', lat: 40.7128, lng: -74.0060, temp: 5.5 } // New York
+    { id: 'TRUCK-101', lat: 46.7712, lng: 23.6236, temp: 4.0 },
+    { id: 'TRUCK-102', lat: 46.7546, lng: 23.5559, temp: -2.0 },
+    { id: 'TRUCK-103', lat: 46.7765, lng: 23.5741, temp: 3.5 },
+    { id: 'TRUCK-104', lat: 46.7962, lng: 23.6145, temp: 3.2 },
+    { id: 'TRUCK-105', lat: 46.7695, lng: 23.6335, temp: 6.1 },
+    { id: 'TRUCK-106', lat: 46.7784, lng: 23.6119, temp: 4.2 },
+    { id: 'TRUCK-107', lat: 46.7554, lng: 23.5932, temp: 3.8 },
+    { id: 'TRUCK-201', lat: 44.4355, lng: 26.1025, temp: 4.5 },
+    { id: 'TRUCK-202', lat: 44.4268, lng: 26.1025, temp: 5.0 },
+    { id: 'TRUCK-301', lat: 47.1585, lng: 27.5870, temp: 2.1 },
+    { id: 'TRUCK-302', lat: 47.1750, lng: 27.5700, temp: 1.5 }
 ];
 
 async function generateAndSend() {
@@ -77,7 +85,7 @@ async function generateAndSend() {
             if (vibration > 4.0) {
                 console.log(`RANDOM SHOCK DETECTED: ${truck.id} [${payload.vibration}G]`);
             } else {
-                console.log('.');
+                console.log(`Sent update for ${truck.id}`);
             }
 
         } catch (err) {

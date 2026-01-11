@@ -15,9 +15,8 @@ const PORT = process.env.PORT || 3003;
 const RISK_FAAS_URL = process.env.RISK_FAAS_URL || 'http://faas-risk:8080/';
 const EMAIL_FAAS_URL = process.env.EMAIL_FAAS_URL || 'http://faas-email:8080/';
 
-// Stores the last known location of every truck.
-// Without this, the map is blank when first log in.
 const truckState = {}; 
+const alertHistory = {};
 
 // HTTP Server & Socket.io Setup
 const server = http.createServer(app);
@@ -25,7 +24,7 @@ const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-// Redis Adapter for Scalability
+// Redis Adapter
 const pubClient = createClient({ url: `redis://${process.env.REDIS_HOST || 'localhost'}:6379` });
 const subClient = pubClient.duplicate();
 
@@ -49,45 +48,82 @@ async function startKafkaConsumer() {
         await kafkaConsumer.run({
             eachMessage: async ({ message }) => {
                 const data = JSON.parse(message.value.toString());
-
-                // Update truck state
-                truckState[data.truckId] = data;
-
-                // Broadcast to map
-                io.emit('truck_update', data);
                 
-                // Check for risk conditions
-                if (data.temperature > 8.0 || data.vibration > 4.0) {
+                const truckId = data.truckId;
+                truckState[truckId] = data;
+                io.emit('truck_update', data);
+
+                const issues = [];
+                let type = 'INFO';
+
+                if (data.temperature > 8.0 || data.temperature < 2.0) {
+                    issues.push(`Temperature deviation: ${data.temperature}°C`);
+                    type = 'WARNING';
+                }
+                if (data.vibration > 4.0) {
+                    issues.push(`High Shock Detected: ${data.vibration}G`);
+                    type = 'CRITICAL';
+                }
+
+                if (issues.length === 0) {
+                    if (alertHistory[truckId]) delete alertHistory[truckId];
+                    return; 
+                }
+
+                const now = Date.now();
+                const lastAlert = alertHistory[truckId];
+
+                // Spam Prevention (1 minute debounce)
+                const isSpam = lastAlert && 
+                               lastAlert.type === type && 
+                               (now - lastAlert.timestamp < 60000);
+
+                if (isSpam) return;
+
+                console.log(`New Alert for ${truckId} (${type}):`, issues);
+                alertHistory[truckId] = { timestamp: now, type: type };
+
+                let riskData = null;
+
+                // Call FaaS if Critical
+                if (type === 'CRITICAL') {
                     try {
-                        console.log(`⚠️ Risk Detected: ${data.truckId}`);
+                        console.log(`Triggering Risk Assessment FaaS for ${truckId}...`);
+                        const riskResponse = await axios.post(RISK_FAAS_URL, {
+                            truckId: truckId,
+                            vibration: data.vibration,
+                            temperature: data.temperature,
+                            timestamp: data.timestamp
+                        }, { timeout: 2000 });
                         
-                        // Call FaaS 1: Risk Calculator
-                        const auditResponse = await axios.post(RISK_FAAS_URL, data);
-                        const audit = auditResponse.data;
+                        riskData = riskResponse.data;
+                        console.log(`FaaS Audit: Loss est. $${riskData.estimatedLoss}`);
+                        
+                         axios.post(EMAIL_FAAS_URL, {
+                            to: 'manager@pharmaguard.com',
+                            subject: `CRITICAL ALERT: ${truckId} Crashed`,
+                            body: `Loss: $${riskData.estimatedLoss}. Location: ${data.latitude}, ${data.longitude}`
+                        }).catch(e => console.error("Email failed", e.message));
 
-                        if (audit.should_alert) {
-                            // Call FaaS 2: Emailer
-                            axios.post(EMAIL_FAAS_URL, {
-                                truckId: data.truckId,
-                                subject: `ALERT: ${audit.status}`,
-                                message: `Issues: ${audit.issues.join(', ')}. Est Loss: $${audit.estimated_loss}`
-                            }).catch(e => console.error("Email FaaS Failed:", e.message));
-
-                            // Notify Dashboard
-                            io.emit('notification', { 
-                                title: `CRITICAL: ${audit.status}`, 
-                                body: audit 
-                            });
-                        }
                     } catch (err) {
-                        console.error('FaaS Error:', err.message);
+                        console.error("FaaS Failed, proceeding without risk data.");
                     }
                 }
-            }
+
+                // Send Alert to Frontend
+                io.emit('notification', {
+                    id: now,
+                    truckId: truckId,
+                    time: new Date().toLocaleTimeString(),
+                    type: type,
+                    message: issues.join(', '),
+                    location: { lat: data.latitude, lng: data.longitude },
+                    riskData: riskData 
+                });
+            },
         });
-        console.log('✅ Kafka Connected');
     } catch (err) {
-        console.error('Kafka Error:', err.message);
+        console.error("Kafka Error:", err.message);
         setTimeout(startKafkaConsumer, 5000);
     }
 }
@@ -112,7 +148,6 @@ async function startRabbitConsumer() {
                 
                 console.log(`Event: ${routingKey}`);
 
-                // Send categorized events to Frontend
                 if (routingKey.includes('order')) {
                     io.emit('order_update', { 
                         status: routingKey.split('.')[1], 
@@ -136,10 +171,10 @@ async function startRabbitConsumer() {
 io.on('connection', (socket) => {
     console.log(`Client connected: ${socket.id}`);
 
-    // Send cached truck states
+    // Send Initial Truck Positions on Load
     const currentTrucks = Object.values(truckState);
     if (currentTrucks.length > 0) {
-        socket.emit('init_trucks', currentTrucks);
+        currentTrucks.forEach(t => socket.emit('truck_update', t));
     }
     
     socket.on('join_room', (userId) => {
@@ -151,7 +186,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// Start Server
 server.listen(PORT, () => {
     console.log(`Notification Service running on port ${PORT}`);
     startKafkaConsumer();

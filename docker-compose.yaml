@@ -163,12 +163,3 @@ services:
     ports:
       - "1025:1025" # SMTP port
       - "8025:8025" # Web UI port
-
-  # Frontend (The Web App)
-  # UNCOMMENT THIS BLOCK AFTER we write the React code
-  # web:
-  #   build: ./packages/web
-  #   container_name: web
-  #   ports:
-  #     - "3000:3000"
-  #   stdin_open: true # Needed for React Docker

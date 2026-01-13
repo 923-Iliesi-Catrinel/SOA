@@ -1,40 +1,57 @@
 import React, { useEffect, useState } from 'react';
 import { 
   Paper, Table, TableBody, TableCell, TableHead, TableRow, 
-  Button, Typography, Chip, TextField, Box 
+  Button, Typography, Chip, TextField, Box, TableContainer
 } from '@mui/material';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
 
 export default function Orders() {
-  const { user } = useAuth();
+  const { user, token } = useAuth(); 
   const [orders, setOrders] = useState([]);
   const [product, setProduct] = useState('Pfizer-BioNTech');
   const [quantity, setQuantity] = useState(100);
 
+  const getAuthHeaders = () => ({
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
   // Load orders from Gateway
   const fetchOrders = async () => {
     try {
-      const res = await axios.get('http://localhost:8080/api/orders');
+      const res = await axios.get('http://localhost:8080/api/orders/', getAuthHeaders());
       setOrders(res.data);
     } catch (err) { console.error(err); }
   };
 
-  useEffect(() => { fetchOrders(); }, []);
+  useEffect(() => { 
+      if (token) fetchOrders(); 
+  }, [token]);
 
   const handleCreate = async () => {
     try {
-      await axios.post('http://localhost:8080/api/orders', { productName: product, quantity });
+      await axios.post(
+          'http://localhost:8080/api/orders/', 
+          { productName: product, quantity }, 
+          getAuthHeaders()
+      );
       fetchOrders();
       alert('Order Created!');
-    } catch(err) { alert('Error creating order'); }
+    } catch(err) { 
+        console.error(err);
+        alert('Error creating order'); 
+    }
   };
 
   const handleDispatch = async (id) => {
     const truckId = prompt("Enter Truck ID (e.g., TRUCK-101):", "TRUCK-101");
     if (truckId) {
       try {
-        await axios.put(`http://localhost:8080/api/orders/${id}/dispatch`, { truckId });
+        await axios.put(
+            `http://localhost:8080/api/orders/${id}/dispatch`, 
+            { truckId }, 
+            getAuthHeaders()
+        );
         fetchOrders();
       } catch(err) { alert('Dispatch failed'); }
     }
@@ -42,17 +59,16 @@ export default function Orders() {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>📦 Order Management</Typography>
+      <Typography variant="h4" gutterBottom>Order Management</Typography>
       
-      {/* Create Order Section */}
       <Paper sx={{ p: 2, mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
         <TextField label="Product" size="small" value={product} onChange={e => setProduct(e.target.value)} />
         <TextField label="Quantity" size="small" type="number" value={quantity} onChange={e => setQuantity(e.target.value)} />
         <Button variant="contained" onClick={handleCreate}>Place Order</Button>
       </Paper>
 
-      {/* Order List */}
-      <Table component={Paper}>
+      <TableContainer component={Paper}>
+      <Table> 
         <TableHead>
           <TableRow>
             <TableCell>ID</TableCell>
@@ -87,6 +103,7 @@ export default function Orders() {
           ))}
         </TableBody>
       </Table>
-    </Box>
-  );
+    </TableContainer>
+  </Box>
+);
 }

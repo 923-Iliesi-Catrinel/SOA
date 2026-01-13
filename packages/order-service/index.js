@@ -9,7 +9,7 @@ app.use(express.json());
 app.use(cors());
 
 const PORT = 3002;
-const JWT_SECRET = process.env.JWT_SECRET || 'secret_key';
+const JWT_SECRET = process.env.JWT_SECRET || 'secret_pharmaguard_key';
 const RABBIT_HOST = process.env.RABBITMQ_HOST || 'amqp://guest:guest@rabbitmq:5672';
 
 const DB_URI = `postgres://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}:5432/${process.env.DB_NAME}`;

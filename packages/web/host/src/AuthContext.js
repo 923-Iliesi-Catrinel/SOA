@@ -6,26 +6,28 @@ const API_URL = 'http://localhost:8080/api';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const savedToken = localStorage.getItem('token');
     const username = localStorage.getItem('username');
     const role = localStorage.getItem('role');
     
-    if (token) {
-      setUser({ token, username, role });
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    if (savedToken) {
+      setToken(savedToken);
+      setUser({ username, role });
+      axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
     }
     setLoading(false);
   }, []);
 
   const register = async (username, password, role) => {
     try {
-      await axios.post(`${API_URL}/auth/register`, { username, password, role });
+      await axios.post(`${API_URL}/auth/register/`, { username, password, role });
       return { success: true };
     } catch (err) {
-      const msg = err.response?.data?.message || "Network Error or Server Down";
+      const msg = err.response?.data?.message || "Registration failed";
       console.error("Registration failed:", msg);
       return { success: false, message: msg };
     }
@@ -33,7 +35,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const res = await axios.post(`${API_URL}/auth/login`, { username, password });
+      const res = await axios.post(`${API_URL}/auth/login/`, { username, password });
       const { token, role } = res.data;
       
       localStorage.setItem('token', token);
@@ -41,6 +43,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('role', role);
       
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setToken(token);
       setUser({ token, username, role });
       return true;
     } catch (err) {
@@ -51,12 +54,13 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.clear();
+    setToken(null);
     setUser(null);
     delete axios.defaults.headers.common['Authorization'];
   };
 
   return (
-    <AuthContext.Provider value={{ user, register, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, register, login, logout, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );

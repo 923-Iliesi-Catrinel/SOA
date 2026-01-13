@@ -30,7 +30,7 @@ const subClient = pubClient.duplicate();
 
 Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
     io.adapter(createAdapter(pubClient, subClient));
-    console.log('✅ Redis Adapter Connected');
+    console.log('Redis Adapter Connected');
 }).catch(err => console.error('Redis Connection Error:', err));
 
 // KAFKA CONSUMER (Telemetry)

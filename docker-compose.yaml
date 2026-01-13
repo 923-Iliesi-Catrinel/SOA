@@ -119,9 +119,9 @@ services:
   # MicroService 4: Notification Service
   notification-service:
     build: ./packages/notification-service
-    container_name: notification-service
-    ports:
-      - "3003:3003"
+    # container_name: notification-service
+    # ports:
+    #   - "3003:3003"
     depends_on:
       - redis
       - rabbitmq

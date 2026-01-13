@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { Box } from '@mui/material';
 import L from 'leaflet';
 import io from 'socket.io-client';
 import 'leaflet/dist/leaflet.css';
+import axios from 'axios';
+import { useAuth } from '../../host/src/AuthContext';
 
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -35,7 +38,6 @@ const redIcon = new L.Icon({
     shadowSize: [41, 41]
 });
 
-// Force IPv4 for Windows/Docker compatibility
 const socket = io('http://127.0.0.1:8080', { transports: ['websocket'] });
 
 function MapFlyTo({ center }) {
@@ -48,22 +50,60 @@ function MapFlyTo({ center }) {
     return null;
 }
 
-export default function TruckMap() {
+export default function TruckMap(props) {
+  const authContext = useAuth(); 
+  const user = authContext?.user || props.user;
+  const token = authContext?.token || props.token;
   const [trucks, setTrucks] = useState({});
   const [alerts, setAlerts] = useState([]);
+  const [myTruckIds, setMyTruckIds] = useState([]); // List of trucks carrying pharmacist's orders
   const [focusLocation, setFocusLocation] = useState(null);
+
+  if (!user) {
+    return <Box p={4}>Waiting for authentication...</Box>;
+  }
+
+  useEffect(() => {
+    const fetchMyTrucks = async () => {
+      if (user?.role === 'MANAGER') return; // Managers don't need to filter
+
+      try {
+        const res = await axios.get('http://localhost:8080/api/orders/', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        // Get all unique truckIds assigned to my orders that are currently SHIPPED
+        const assignedTrucks = res.data
+          .filter(order => order.status === 'SHIPPED' && order.truckId)
+          .map(order => order.truckId);
+        
+        setMyTruckIds([...new Set(assignedTrucks)]);
+      } catch (err) {
+        console.error("Could not fetch assigned trucks", err);
+      }
+    };
+
+    fetchMyTrucks();
+  }, [user, token]);
 
   useEffect(() => {
     socket.on('truck_update', (data) => {
-      setTrucks(prev => ({ ...prev, [data.truckId]: data }));
+      // If Manager OR if this truck is assigned to me
+      if (user?.role === 'MANAGER' || myTruckIds.includes(data.truckId)) {
+        setTrucks(prev => ({ ...prev, [data.truckId]: data }));
+      }
     });
 
     socket.on('notification', (newAlert) => {
-      setAlerts(prev => [newAlert, ...prev].slice(0, 10));
+      // If Manager OR if alert is about my truck
+      if (user?.role === 'MANAGER' || myTruckIds.includes(newAlert.truckId)) {
+        setAlerts(prev => [newAlert, ...prev].slice(0, 10));
+      }
     });
 
     return () => socket.off();
-  }, []);
+  }, [user, myTruckIds]);
+
+  const title = user?.role === 'MANAGER' ? "All Orders Live Alerts" : "My Orders Live Alerts";
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 120px)', gap: '20px', fontFamily: 'Arial, sans-serif' }}>
@@ -85,9 +125,9 @@ export default function TruckMap() {
                 >
                 <Popup>
                     <div style={{ textAlign: 'center' }}>
-                        <h3 style={{ margin: '0 0 5px 0', color: '#1976d2' }}>{truck.truckId}</h3>
-                        <div>🌡️ {truck.temperature}°C</div>
-                        <div>📉 {truck.vibration}G</div>
+                        <h3 style={{ margin: '0 0 5px 0' }}>{truck.truckId}</h3>
+                        <div>📦 Carrying your order</div>
+                        <div>🌡️ {truck.temperature}°C | 📉 {truck.vibration}G</div>
                     </div>
                 </Popup>
                 </Marker>
@@ -106,7 +146,7 @@ export default function TruckMap() {
           overflow: 'hidden'
       }}>
         <div style={{ padding: '15px', background: '#e3f2fd', borderBottom: '1px solid #bbdefb' }}>
-            <h3 style={{ margin: 0, color: '#1565c0' }}>📢 Live Alert Feed</h3>
+            <h3 style={{ margin: 0, color: '#1565c0' }}>📢 {title}</h3>
             <small style={{ color: '#666' }}>Click alert to locate truck</small>
         </div>
         

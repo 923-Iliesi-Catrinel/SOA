@@ -1,15 +1,20 @@
 import React, { Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route, Link, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Container, CircularProgress, Box } from '@mui/material';
 import { AuthProvider, useAuth } from './AuthContext';
-import { useLocation } from 'react-router-dom';
 import Login from './Login';
 import Orders from './Orders';
 import Register from './Register';
 
-// LAZY LOAD THE REMOTE DASHBOARD (From Port 4001)
+// LAZY LOAD THE REMOTE DASHBOARD
 const RemoteDashboard = React.lazy(() => import('dashboard/DashboardApp'));
+
+const DashboardWrapper = () => {
+  const { user, token } = useAuth();
+  // Pass the data as props so the Dashboard doesn't need its own AuthProvider
+  return <RemoteDashboard user={user} token={token} />;
+};
 
 const Layout = () => {
   const { user, logout } = useAuth();
@@ -53,7 +58,7 @@ const App = () => {
                     <CircularProgress /> <Typography ml={2}>Loading Remote Dashboard...</Typography>
                 </Box>
               }>
-                <RemoteDashboard />
+                <DashboardWrapper />
               </Suspense>
             } />
             <Route path="/orders" element={<Orders />} />

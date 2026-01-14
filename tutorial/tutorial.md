@@ -57,6 +57,7 @@ c. Distribution (Redis Pub/Sub): To visualize this data in real-time on the fron
 We will use Docker to ensure our Redis instance is accessible by all microservices on the internal network.
 
 **2.1: Define the Backplane**
+
 Add the Redis (standard Alpine image) to your `docker-compose.yaml` like this:
 
 ```yaml
@@ -94,7 +95,7 @@ server {
 }
 ```
 
-**2.3: Connecting the Microservice**
+**2.3. Connecting the Microservice**
 
 Configure the microservice to depend on Redis:
 
@@ -168,26 +169,26 @@ We use Docker Compose's scaling feature to spin up **2 replicas** of our service
 docker-compose up -d --build --scale notification-service=2
 ```
 
-Docker launches `notification-service_1` and `notification-service_2`. Both connect to the single `shared_redis` container.
+Docker launches `soa-notification-service-1` and `soa-notification-service-2`. Both connect to the single `shared_redis` container.
 
 **4.2. Monitor**
 
 Open two separate terminals to view the logs of each replica:
 
--   Terminal 1: `docker logs -f notification-service_1`
--   Terminal 2: `docker logs -f notification-service_2`
+-   Terminal 1: `docker logs -f soa-notification-service-1`
+-   Terminal 2: `docker logs -f soa-notification-service-2`
 
 **4.3. Test**
 
 1. Start PharmaGuard and open the Dashboard page. The Load Balancer routes the connection to Instance 1.
 
--   _Observation (Terminal 1):_ `Client connected: socket_id_A`
+-   _Terminal 1:_ `Client connected: socket_id_A`
 
 ![alt text](image-2.png)
 
 2. The Telemetry Service (data injector) pushes a Kafka message. Since Kafka balances consumer load, this message is picked up by Instance 2.
 
--   _Observation (Terminal 2):_ `Received Kafka Alert: { truckId: "TRUCK-101" }`
+-   _Terminal 2:_ `Received Kafka Alert: { truckId: "TRUCK-101" }`
 
 ![alt text](image.png)
 

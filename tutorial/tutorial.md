@@ -175,18 +175,18 @@ Docker launches `soa-notification-service-1` and `soa-notification-service-2`. B
 
 Open two separate terminals to view the logs of each replica:
 
--   Terminal 1: `docker logs -f soa-notification-service-1`
--   Terminal 2: `docker logs -f soa-notification-service-2`
+-   Terminal 1: `docker logs -f soa-notification-service-2`
+-   Terminal 2: `docker logs -f soa-notification-service-1`
 
 **4.3. Test**
 
-1. Start PharmaGuard and open the Dashboard page. The Load Balancer routes the connection to Instance 1.
+1. Start PharmaGuard and open the Dashboard page. The Load Balancer routes the connection to Instance 2.
 
 -   _Terminal 1:_ `Client connected: socket_id_A`
 
 ![alt text](image-2.png)
 
-2. The Telemetry Service (data injector) pushes a Kafka message. Since Kafka balances consumer load, this message is picked up by Instance 2.
+2. The Telemetry Service (data injector) pushes a Kafka message. Since Kafka balances consumer load, this message is picked up by Instance 1.
 
 -   _Terminal 2:_ `Received Kafka Alert: { truckId: "TRUCK-101" }`
 

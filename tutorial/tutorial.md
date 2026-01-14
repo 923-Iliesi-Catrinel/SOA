@@ -1,4 +1,4 @@
-# Implementing Horizontal Scalability for Real-Time Notifications
+# Implementing Scalability for Real-Time Notifications using Redis Adapter
 
 ## 1. Introduction
 

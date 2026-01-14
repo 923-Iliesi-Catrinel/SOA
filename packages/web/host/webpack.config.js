@@ -31,8 +31,6 @@ module.exports = {
     new ModuleFederationPlugin({
       name: 'host',
       remotes: {
-        // "dashboard" is the name we gave in the Remote config
-        // "dashboard@" must match the "name" in remote's webpack config
         dashboard: 'dashboard@http://localhost:4001/remoteEntry.js',
       },
       shared: { react: { singleton: true }, 'react-dom': { singleton: true } },

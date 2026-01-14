@@ -34,17 +34,17 @@ const kafka = new Kafka({
 const producer = kafka.producer();
 
 const trucks = [
-    { id: 'TRUCK-101', lat: 46.7712, lng: 23.6236, temp: 4.0 },
-    { id: 'TRUCK-102', lat: 46.7546, lng: 23.5559, temp: -2.0 },
-    { id: 'TRUCK-103', lat: 46.7765, lng: 23.5741, temp: 3.5 },
-    { id: 'TRUCK-104', lat: 46.7962, lng: 23.6145, temp: 3.2 },
-    { id: 'TRUCK-105', lat: 46.7695, lng: 23.6335, temp: 6.1 },
-    { id: 'TRUCK-106', lat: 46.7784, lng: 23.6119, temp: 4.2 },
-    { id: 'TRUCK-107', lat: 46.7554, lng: 23.5932, temp: 3.8 },
-    { id: 'TRUCK-201', lat: 44.4355, lng: 26.1025, temp: 4.5 },
-    { id: 'TRUCK-202', lat: 44.4268, lng: 26.1025, temp: 5.0 },
-    { id: 'TRUCK-301', lat: 47.1585, lng: 27.5870, temp: 2.1 },
-    { id: 'TRUCK-302', lat: 47.1750, lng: 27.5700, temp: 1.5 }
+    { id: 'truck11', lat: 46.7712, lng: 23.6236, temp: 4.0 },
+    { id: 'truck12', lat: 46.7546, lng: 23.5559, temp: -2.0 },
+    { id: 'truck13', lat: 46.7765, lng: 23.5741, temp: 3.5 },
+    { id: 'truck14', lat: 46.7962, lng: 23.6145, temp: 3.2 },
+    { id: 'truck15', lat: 46.7695, lng: 23.6335, temp: 6.1 },
+    { id: 'truck16', lat: 46.7784, lng: 23.6119, temp: 4.2 },
+    { id: 'truck17', lat: 46.7554, lng: 23.5932, temp: 3.8 },
+    { id: 'truck21', lat: 44.4355, lng: 26.1025, temp: 4.5 },
+    { id: 'truck22', lat: 44.4268, lng: 26.1025, temp: 5.0 },
+    { id: 'truck31', lat: 47.1585, lng: 27.5870, temp: 2.1 },
+    { id: 'truck32', lat: 47.1750, lng: 27.5700, temp: 1.5 }
 ];
 
 async function generateAndSend() {
@@ -99,7 +99,7 @@ app.post('/simulate/shock', async (req, res) => {
     const { truckId } = req.body;
     
     const shockData = {
-        truckId: truckId || 'TRUCK-101',
+        truckId: truckId || 'truck101',
         temperature: 6.0,
         vibration: 15.0, // MASSIVE SHOCK
         location: { lat: 46.77, lng: 23.60 },
